@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:english_words/english_words.dart';
+import 'package:flutter_naming/src/bloc/bloc.dart';
 import 'saved.dart';
 
 class Randomlist extends StatefulWidget {
@@ -11,7 +12,8 @@ class Randomlist extends StatefulWidget {
 
 class _RandomListState extends State<Randomlist> {
   final List<WordPair> _suggestions = <WordPair>[];
-  final Set<WordPair> _saved = Set<WordPair>();
+  //final Set<WordPair> _saved = Set<WordPair>();
+
   @override
   Widget build(BuildContext context) {
     //final randomword = WordPair.random();
@@ -22,10 +24,8 @@ class _RandomListState extends State<Randomlist> {
             IconButton(
                 icon: Icon(Icons.list),
                 onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => SavedList(
-                            saved: _saved,
-                          )));
+                  Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => SavedList()));
                 })
           ],
         ),
@@ -33,21 +33,27 @@ class _RandomListState extends State<Randomlist> {
   }
 
   Widget _buildList() {
-    return ListView.builder(itemBuilder: (context, index) {
-      if (index.isOdd) {
-        return Divider();
-      } else {
-        var realIndex = index ~/ 2;
-        if (realIndex >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10));
-        }
-        return _buildRow(_suggestions[realIndex]);
-      }
-    });
+    return StreamBuilder<Set<WordPair>>(
+        stream: bloc.savedSream,
+        builder: (context, snapshot) {
+          return ListView.builder(itemBuilder: (context, index) {
+            if (index.isOdd) {
+              return Divider();
+            } else {
+              var realIndex = index ~/ 2;
+              if (realIndex >= _suggestions.length) {
+                _suggestions.addAll(generateWordPairs().take(10));
+              }
+              return _buildRow(snapshot.data, _suggestions[realIndex]);
+            }
+          });
+        });
   }
 
-  Widget _buildRow(WordPair pair) {
-    final bool alreadySaved = _saved.contains(pair);
+  Widget _buildRow(Set<WordPair> saved, WordPair pair) {
+    bool alreadySaved = false;
+    if (saved != null) alreadySaved = saved.contains(pair);
+
     return ListTile(
       title: Text(
         pair.asPascalCase,
@@ -58,15 +64,16 @@ class _RandomListState extends State<Randomlist> {
         color: Colors.red,
       ),
       onTap: () {
-        setState(() {
-          print(_suggestions.length);
-          if (alreadySaved)
-            _saved.remove(pair);
-          else
-            _saved.add(pair);
+        bloc.addToOrRemmoveFromSavedList(pair);
+        // setState(() {
+        //   print(_suggestions.length);
+        //   if (alreadySaved)
+        //     bloc.saved.remove(pair);
+        //   else
+        //     bloc.saved.add(pair);
 
-          print(_saved);
-        });
+        //   print(bloc.saved);
+        // });
       },
     );
   }
